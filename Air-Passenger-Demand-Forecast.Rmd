@@ -1,0 +1,292 @@
+---
+title: "Air Passenger Demand Forecast"
+author: "Mengxuan Lu"
+date: "12/11/2020"
+output:
+  ioslides_presentation: default
+  beamer_presentation: default
+  slidy_presentation: default
+---
+
+```{r global_options}
+knitr::opts_chunk$set(fig.path='Figs/')
+```
+
+```{r message=FALSE}
+library(readr)
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(ggpubr)
+library(forecast)
+library(seasonal)
+```
+## General Overview
+**Goal** \
+
+Forecast the U.S. air passenger demand. 
+
+**Source of the data** \
+
+I downloaded the data from <https://www.transtats.bts.gov/DL_SelectFields.asp?Table_ID=259&DB_Short_Name=Air%20Carriers>.
+
+
+
+## Overview the data
+
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
+US_carrier <- read_csv("US_carrier.csv")
+glimpse(US_carrier)
+
+```
+
+
+## EDA
+### **Questions I am interested**
+
+1) What are the top 5 busiests airport for departure in 2019?
+```{r message= FALSE, warning=FALSE}
+
+top_airport_depart <- US_carrier %>% 
+  filter(YEAR == 2019) %>% 
+  select(ORIGIN, ORIGIN_CITY_NAME, PASSENGERS) %>% 
+  group_by(ORIGIN, ORIGIN_CITY_NAME) %>% 
+  summarise(Passengers = sum(PASSENGERS)) %>% 
+  arrange(desc(Passengers))
+
+top_airport_depart <- head(top_airport_depart, n = 5)
+top_airport_depart <- top_airport_depart %>% 
+  separate(ORIGIN_CITY_NAME, c("City", "State"), sep = ",") %>% 
+  mutate(Origin_Airport = paste0(ORIGIN,"(", City, ")" )) %>% 
+  select(Origin_Airport, Passengers)
+
+p <- ggplot(data = top_airport_depart, 
+            aes(x = reorder(Origin_Airport,Passengers), Passengers)) + 
+  geom_bar(stat = "identity", width = 0.5, fill = "#FF6666") + 
+  scale_y_continuous(limits = c(0,50000000)) +
+  coord_flip() 
+
+p + labs(title = "Top 5 busiest airports for departure for 2019", 
+         y = "Passengers", x = "Airports") + theme(plot.title = element_text(
+           size = 15,face = "bold", hjust = 0.5, vjust = 0.3))
+```
+2) What are the top 5 busiest airports for arrival in 2019?
+
+```{r message=FALSE, warning=FALSE}
+top_airport_arr <- US_carrier %>% 
+  filter(YEAR == "2019") %>% 
+  select(DEST, DEST_CITY_NAME, PASSENGERS) %>% 
+  group_by(DEST, DEST_CITY_NAME) %>% 
+  summarise(Passengers = sum(PASSENGERS)) %>% 
+  arrange(desc(Passengers))
+
+top_airport_arr <- head(top_airport_arr, n = 5) 
+
+top_airport_arr <- top_airport_arr %>% 
+  separate(DEST_CITY_NAME, c("City","State"), sep = ",") %>% 
+  mutate(Dest_airport = paste0(DEST, "(", City, ")"))
+
+
+q <- ggplot(data = top_airport_arr, aes(x = reorder(Dest_airport, Passengers), 
+                                   y = Passengers)) +
+  geom_bar(stat = "identity", width = 0.5, fill = "#3390FF") +
+  scale_y_continuous(limits = c(0, 50000000)) +
+  coord_flip()
+
+q + labs(title = "Top 5 busiest airports for arrival for 2019", x = "Airports") +
+ theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5,
+                                 vjust = 0.5))
+```
+
+
+```{r message=FALSE, warning=FALSE}
+top_airline_year <- US_carrier %>% 
+  select(PASSENGERS, UNIQUE_CARRIER, CARRIER_NAME, YEAR) %>% 
+  group_by(YEAR, UNIQUE_CARRIER, CARRIER_NAME) %>% 
+  summarise(Passengers = sum(PASSENGERS)) %>% 
+  arrange(desc(Passengers), UNIQUE_CARRIER) %>% 
+  filter(UNIQUE_CARRIER %in% c("WN","DL","AA","UA","OO","US","AS","B6"))
+
+m <- ggplot(data = top_airline_year) +
+  scale_x_continuous(breaks = seq(2010, 2020, by = 1)) +
+  geom_smooth(aes(x = YEAR, y = Passengers, color = CARRIER_NAME), se = FALSE)
+
+m + labs(title = "The number of passagers from top airlines over year ", 
+         x = "Year") +
+  theme(plot.title=(element_text(size = 15, face = "bold", hjust = 0.5)),
+        legend.title = element_blank()) 
+  
+```
+```{r warning = FALSE, message = FALSE}
+
+top_seat_uti <- US_carrier %>% 
+  mutate(EMPTY_SEATS = SEATS - PASSENGERS) %>% 
+  filter(SEATS > 0) %>% 
+  select(UNIQUE_CARRIER, CARRIER_NAME, EMPTY_SEATS, PASSENGERS, SEATS, YEAR) %>% 
+  group_by(YEAR, UNIQUE_CARRIER, CARRIER_NAME) %>% 
+  summarise(Total_empty_seats = sum(EMPTY_SEATS), Total_seats = sum(SEATS),
+            Passengers = sum(PASSENGERS)) %>% 
+  mutate(Seat_utilization = 
+                  round(Passengers/Total_seats *100, 2)) %>% 
+  arrange(desc(YEAR), desc(Seat_utilization)) %>% 
+  select(YEAR, UNIQUE_CARRIER, CARRIER_NAME, Seat_utilization)
+
+seats <- top_seat_uti %>% 
+  filter(UNIQUE_CARRIER %in% c("WN","DL","AA","UA","OO","US","AS","B6"))
+
+l <- ggplot(data = seats) +
+  geom_smooth(aes(x = YEAR, y = Seat_utilization, 
+                  color = CARRIER_NAME), se = FALSE) +
+  scale_x_continuous(breaks = seq(2010, 2020, by = 1)) 
+
+l + labs(title = "Seat utilization rate for top airlines", x = "Year", 
+         y = "Seat Utiliztion Rate (%)") + 
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5),
+        legend.title = element_blank())
+  
+
+```
+
+##### RPK = the number of paying passengers x total distance traveled
+
+```{r warning = FALSE, message=FALSE}
+# calculate RPK per airline over year, the DISTANCE is in mile, needs to convert to kilometers
+Total_RPK <- US_carrier %>% mutate(RPK = PASSENGERS * DISTANCE * 1.61) %>% 
+  select(YEAR, UNIQUE_CARRIER, CARRIER_NAME, RPK) %>% 
+  group_by(YEAR,UNIQUE_CARRIER, CARRIER_NAME) %>% 
+  summarise(TOTAL_RPK = sum(RPK)) %>% 
+  arrange(desc(TOTAL_RPK))
+
+RPK <- Total_RPK %>% 
+  filter(UNIQUE_CARRIER %in% c("WN","DL","AA","UA","OO","US","AS","B6"))
+
+a <- ggplot(RPK) + 
+  geom_smooth(aes(x = YEAR, y = TOTAL_RPK, color = CARRIER_NAME),se=F) +
+  scale_x_continuous(breaks = seq(2010, 2020, by = 1)) 
+ 
+a + labs(title = "Revenue Passenger Kilometers(RPK)", x = "Year", y = "RPK") +
+  theme(plot.title = element_text(size = 15, hjust = 0.5, face = "bold"), 
+        legend.title = element_blank())
+
+```
+
+
+## Forecast
+
+### **Relation with Covid19 cases?**
+
+```{r warning = FALSE, message=FALSE, figures-side, out.width="50%"}
+# import covid19 cases from ourworldindata.org
+covid19 <- read.csv("covid-data.csv")
+
+# filter just United States
+covid19$date <- ymd(covid19$date, tz = Sys.timezone())
+US_covid19 <- covid19 %>% filter(location == "United States") %>% 
+  select(date, new_cases) %>% 
+  mutate(Year = year(date), Month = month(date), Date = day(date))
+
+# plot the new cases by month 
+covid_plot <- ggplot(data = US_covid19, aes(x = date, y =new_cases)) +
+  geom_line(color = "blue") +
+  scale_x_datetime(date_labels = "%b", date_breaks = "1 month") +
+  ggtitle("Covid19 new cases by month") + xlab("Month") + ylab("New cases") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# plot the number of passengers in total in 2020
+US_carrier$MONTH <- as.integer(US_carrier$MONTH)
+pass_plot <- US_carrier %>% filter(YEAR == 2020) %>% 
+  select(MONTH, PASSENGERS) %>% 
+  arrange(MONTH) %>% 
+  group_by(MONTH) %>% 
+  summarise(Passengers = sum(PASSENGERS)) %>% 
+  ggplot(aes(x = MONTH, y = Passengers)) + 
+  geom_smooth(se = F) + scale_x_discrete(limits = seq(1, 12, by = 1)) +
+  ggtitle("Number of Air Passengers by month") + xlab("Month") +
+  theme(plot.title = element_text(hjust = 0.5))
+ 
+ggarrange(covid_plot, pass_plot, ncol = 2, nrow = 1) 
+```
+
+
+### Decomposition \
+
+```{r message=FALSE, warning=FALSE}
+count_passenger <- US_carrier %>% select(PASSENGERS,YEAR,MONTH) %>% 
+  arrange(YEAR, MONTH) %>% 
+  group_by(YEAR, MONTH) %>% 
+  summarise(passengers = sum(PASSENGERS))
+
+pass <- c(count_passenger$passengers)
+
+# convert to time-series dataset in order to analyze it
+passenger = ts(pass, start = 2010, frequency = 12)
+fit_dec <- decompose(passenger)
+autoplot(fit_dec) + ggtitle("Decompose")
+
+```
+
+
+```{r}
+##(fit.ets <- ets(passenger))
+
+## checkresiduals(fit.ets)
+
+```
+
+### ARIMA
+#### auto.arima()
+```{r message=FALSE, warning=FALSE}
+(fit.arima <- auto.arima(passenger))
+checkresiduals(fit.arima)
+```
+
+#### Manual ARIMA parameter selection
+
+##### Differencing
+
+```{r message=FALSE, warning=FALSE}
+# manual ARIMA model parameter selection
+diff_pas <- diff(passenger, lag = 12)
+diff_pas %>% ggtsdisplay()
+```
+
+##### Parameter selection, choose the lowest AICc
+```{r message=FALSE, warning=FALSE}
+(myarima <- Arima(passenger, order = c(0,1,1),seasonal = c(0,1,1)))
+checkresiduals(myarima)
+```
+
+### Compare models ARIMA vs. ETS
+
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+
+mytrain <- window(passenger, start = 2010, end = 2017)
+mytest <- window(passenger, start = 2018)
+
+(myarima <- Arima(mytrain, order = c(0,1,1),seasonal = c(0,1,1)))
+(fit.ets <- hw(mytrain, seasonal = "additive", damped = TRUE))
+
+fct_ets <- forecast(fit.ets, h = 24) %>% accuracy(passenger)
+fct_arima <- forecast(myarima, h = 24) %>% accuracy(passenger)
+
+
+print("HW ETS model")
+fct_ets 
+
+print("ARIMA model")
+fct_arima
+```
+
+```{r}
+##Comparison plot for two models
+
+forecast_ets <- forecast(hw(passenger,damped = TRUE,seasonal = "additive"), h = 12) 
+forecast_arima <- forecast(Arima(passenger, order = c(0,1,1),seasonal = c(0,1,1)), 
+                           h = 12) 
+
+autoplot(forecast_ets)
+autoplot(forecast_arima)
+
+
+```
+
