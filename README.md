@@ -4,13 +4,13 @@
 The goal of my project is to forecast the U.S. air passenger demand. The source of the data is from https://www.transtats.bts.gov/DL_SelectFields.asp?Table_ID=259&DB_Short_Name=Air%20Carriers. I chose 23 fields that I would like to analyze on from year 2010 to September 2020, which is the most updated month.
 
 ## Exploratory Data Analysis
-I did exploratory data analysis to better understand the data by answering six questions, which are
+I did exploratory data analysis to better understand the data by answering six questions, which are<br />
 a) In 2019, which airport is the busiest airport for departure?<br />
 b) In 2019, which airport is the busiest airport for arrival?<br />
-c) From 2010 to 2019 in total, who are the top 5 airlines have most passengers?\ 
-d) What is the most passengers change over years among top airlines from 2010 to 2019?\ 
-e) Among those top airlines, what is their seat utilization rate like year over year?\ 
-f) Among those top airlines, what is their RPK rate over years?
+c) From 2010 to 2019 in total, who are the top 5 airlines have most passengers?<br />
+d) What is the most passengers change over years among top airlines from 2010 to 2019?<br />
+e) Among those top airlines, what is their seat utilization rate like year over year?<br /> 
+f) Among those top airlines, what is their RPK rate over years?<br />
 
 ## Forecast
 
