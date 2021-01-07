@@ -5,7 +5,12 @@ The goal of my project is to forecast the U.S. air passenger demand. The source 
 
 ## Exploratory Data Analysis
 I did exploratory data analysis to better understand the data by answering six questions, which are
-a) In 2019, which airport is the busiest airport for departure? \ b) In 2019, which airport is the busiest airport for arrival?\ c) From 2010 to 2019 in total, who are the top 5 airlines have most passengers?\ d) What is the most passengers change over years among top airlines from 2010 to 2019?\ e) Among those top airlines, what is their seat utilization rate like year over year?\ f) Among those top airlines, what is their RPK rate over years?
+a) In 2019, which airport is the busiest airport for departure?\n 
+b) In 2019, which airport is the busiest airport for arrival?\n 
+c) From 2010 to 2019 in total, who are the top 5 airlines have most passengers?\ 
+d) What is the most passengers change over years among top airlines from 2010 to 2019?\ 
+e) Among those top airlines, what is their seat utilization rate like year over year?\ 
+f) Among those top airlines, what is their RPK rate over years?
 
 ## Forecast
 
