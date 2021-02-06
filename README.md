@@ -14,12 +14,12 @@ f) Among those top airlines, what was their RPK rate over years?<br />
 
 ## Forecast
 
-- Model Selection
+- Model Selection\n
 After I decompose the data, I tried different models, in the end, Arima(0,1,1)(0,1,1)[12] gave me the least AICc values and also only one significant lag in ACF
 
-- Model Comparison
+- Model Comparison\n
 I split the data into training and test. I fit in two models and run the accuracy() function to compare the metrics. Arima(0,1,1)(0,1,1)[12] also gave me the best result.
 
-- Forecast
+- Forecast\n
 I use the model I chose to run the forecast for next two years.
 
