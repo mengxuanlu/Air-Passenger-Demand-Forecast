@@ -24,5 +24,5 @@ I split the data into training and test. I fit in two models and run the accurac
 
 - Forecast
 
-I use the model I chose to run the forecast for next two years.
+I use ARIMA and ETS model to run the forecast for the next two years.
 
