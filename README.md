@@ -14,7 +14,8 @@ f) Among those top airlines, what was their RPK rate over years?<br />
 
 ## Forecast
 
-- Model Selection\n
+- Model Selection\
+
 After I decompose the data, I tried different models, in the end, Arima(0,1,1)(0,1,1)[12] gave me the least AICc values and also only one significant lag in ACF
 
 - Model Comparison\n
