@@ -26,3 +26,4 @@ I split the data into training and test. I fit in two models and run the accurac
 
 I use ARIMA and ETS model to run the forecast for the next two years.
 
+Since March 2020, airline industry had the huge impact due to Covid19. The current statistical model can't predict the abnormal event. Therefore, for practice purpose, I predicted the passengers demand for year 2019 with data from year 2010-2018. Please refer the python code for reference.
